@@ -221,6 +221,55 @@ local function get_color(a, b)
     return data_color[a][b]
 end
 
+-- https://stackoverflow.com/questions/3407942/rgb-values-of-visible-spectrum
+local function spectral_color(l)
+    local t
+    local r, g, b = 0, 0, 0
+        if ((l>=400.0)and(l<410.0)) then t=(l-400.0)/(410.0-400.0); r=     (0.33*t)-(0.20*t*t)
+    elseif ((l>=410.0)and(l<475.0)) then t=(l-410.0)/(475.0-410.0); r=0.14         -(0.13*t*t)
+    elseif ((l>=545.0)and(l<595.0)) then t=(l-545.0)/(595.0-545.0); r=     (1.98*t)-(     t*t)
+    elseif ((l>=595.0)and(l<650.0)) then t=(l-595.0)/(650.0-595.0); r=0.98+(0.06*t)-(0.40*t*t)
+    elseif ((l>=650.0)and(l<700.0)) then t=(l-650.0)/(700.0-650.0); r=0.65-(0.84*t)+(0.20*t*t) end
+        if ((l>=415.0)and(l<475.0)) then t=(l-415.0)/(475.0-415.0); g=              (0.80*t*t)
+    elseif ((l>=475.0)and(l<590.0)) then t=(l-475.0)/(590.0-475.0); g=0.8 +(0.76*t)-(0.80*t*t)
+    elseif ((l>=585.0)and(l<639.0)) then t=(l-585.0)/(639.0-585.0); g=0.84-(0.84*t)            end
+        if ((l>=400.0)and(l<475.0)) then t=(l-400.0)/(475.0-400.0); b=     (2.20*t)-(1.50*t*t)
+    elseif ((l>=475.0)and(l<560.0)) then t=(l-475.0)/(560.0-475.0); b=0.7 -(     t)+(0.30*t*t) end
+    local n = math.sqrt(r^2 + g^2 + b^2)
+    -- local n = 1
+    return {r/n, g/n, b/n}
+end
+
+local function prime_color(i)
+    if i == - 1 then return {1, 1, 1}
+    elseif i == 0 then return {0, 0, 0}
+    else
+        local a = 660
+        local b = 2000
+        local c = 7
+        return spectral_color(a - b/(i+c))
+        -- return spectral_color(700 - 500/(i+2))
+    end
+end
+
+local function color2(a, b)
+    local d = get_data(a, b)
+    local cs = {}
+    for i = 1, #d do
+        table.insert(cs, prime_color(d[i]))
+    end
+    local r, g, b = 0, 0, 0
+    for i = 1, #cs do
+        r = r + cs[i][1]^2
+        g = g + cs[i][2]^2
+        b = b + cs[i][3]^2
+    end
+    r = math.sqrt(r)-- / #cs)
+    g = math.sqrt(g)-- / #cs)
+    b = math.sqrt(b)-- / #cs)
+    return {r, g, b}
+end
+
 local function data_print(a, b)
     local d = get_data(a, b)
     if #d == 0 then return "trivial" end
@@ -243,7 +292,7 @@ function love.update(_dt)
     end
 end
 
-local show_mode = 2
+local show_mode = 1
 local first_mode = 1
 function love.keypressed(key, scancode, isrepeat)
     if key == "1" then
@@ -252,6 +301,8 @@ function love.keypressed(key, scancode, isrepeat)
         show_mode = 2
     elseif key == "3" then
         show_mode = 3
+    elseif key == "4" then
+        show_mode = 4
     elseif key == "q" then
         first_mode = first_mode - 1
     elseif key == "w" then
@@ -319,13 +370,18 @@ function love.draw()
                 local black = {0, 0, 0, 1}
                 local white = {1, 1, 1, 1}
                 local c = black
-                if show_mode == 1 then
-                    if data_has(x, y, first_mode) then c = white end
-                elseif show_mode == 2 then
+                if show_mode == 2 then
+                    if data_has(x, y, first_mode) then
+                        -- c = white
+                        c = prime_color(first_mode)
+                    end
+                elseif show_mode == 1 then
                     c = get_color(x, y)
-                elseif show_mode == 3 then
+                elseif show_mode == 4 then
                     local n = #get_data(x, y)
-                    c = {n / 10, n / 10, n / 10}
+                    c = {n / 8, n / 8, n / 8}
+                elseif show_mode == 3 then
+                    c = color2(x, y)
                 end
 
                 table.insert(points, {
